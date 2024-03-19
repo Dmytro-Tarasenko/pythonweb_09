@@ -11,6 +11,7 @@ beautifulsoup4 = "^4.12.3"
 lxml = "^5.1.0"
 requests = "^2.31.0"
 pydantic = {extras = ["all"], version = "^2.6.4"}
+scrapy = "^2.11.1"
 
 
 [build-system]
