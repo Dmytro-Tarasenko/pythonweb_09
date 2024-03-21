@@ -1,5 +1,100 @@
 """Scrapy scraper for and parser for the website https://quotes.toscrape.com/"""
-import json
-import requests
+from typing import Any
 
-from models import AuthorJsonModel, QuoteJsonModel
+import scrapy
+from scrapy.crawler import CrawlerProcess
+from scrapy.http import Response
+
+
+class QuoteCrawler(scrapy.Spider):
+    name = "quotes"
+
+    allowed_domains = [
+        "quotes.toscrape.com"
+    ]
+
+    start_urls = [
+        "https://quotes.toscrape.com"
+    ]
+    custom_settings = {
+        "ROBOTSTXT_OBEY": True,
+        "REQUEST_FINGERPRINTER_IMPLEMENTATION": "2.7",
+        "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
+        "FEED_EXPORT_ENCODING": "utf-8",
+        "FEEDS": {
+            "quotes_scrapy.json": {
+                "format": "json",
+                "encoding": "utf-8",
+                "indent": 4
+            }
+        }
+    }
+
+    def parse(self, response: Response, **kwargs) -> Any:
+        for quote_div in response.xpath("//div[@class='quote']"):
+            author = quote_div.xpath("//small[@class='author']/text()").get().strip()
+            quote = quote_div.xpath("//span[@class='text']/text()").get().strip()
+            tags = quote_div.xpath("//meta[@class='keywords']/@content").get().split(",")
+            yield {
+                "author": author,
+                "quote": quote,
+                "tags": tags
+            }
+
+        next_page = self.start_urls[0] + response.xpath("//li[@class='next']/a/@href").get().strip()
+        print(next_page)
+        yield from response.follow_all(next_page, self.parse)
+
+
+class AuthorSpider(scrapy.Spider):
+    name = "authors"
+    allowed_domains = [
+        "quotes.toscrape.com"
+    ]
+
+    start_urls = [
+        "https://quotes.toscrape.com/"
+    ]
+
+    custom_settings = {
+        "ROBOTSTXT_OBEY": True,
+        "REQUEST_FINGERPRINTER_IMPLEMENTATION": "2.7",
+        "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
+        "FEED_EXPORT_ENCODING": "utf-8",
+        "FEEDS": {
+            "authors_scrapy.json": {
+                "format": "json",
+                "encoding": "utf-8",
+                "indent": 4
+            }
+        }
+    }
+
+    def parse(self, response: Response, **kwargs) -> Any:
+        author_page_links = response.css(".author + a")
+        yield from response.follow_all(author_page_links, self.parse_author)
+
+        pagination_links = response.css("li.next a")
+        yield from response.follow_all(pagination_links, self.parse)
+
+    @staticmethod
+    def parse_author(response):
+        def extract_with_css(query):
+            return response.css(query).get(default="").strip()
+
+        yield {
+            "fullname": extract_with_css("h3.author-title::text"),
+            "born_date": extract_with_css(".author-born-date::text"),
+            "description": extract_with_css(".author-description::text"),
+            "born_location": extract_with_css(".author-born-date::text")
+        }
+
+
+if __name__ == "__main__":
+    # author_process = CrawlerProcess()
+    # author_process.crawl(AuthorSpider)
+    # author_process.start()
+
+    quote_process = CrawlerProcess()
+    quote_process.crawl(QuoteCrawler)
+    quote_process.start()
