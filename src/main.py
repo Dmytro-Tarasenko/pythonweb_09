@@ -6,7 +6,8 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.http import Response
 
 
-class QuoteCrawler(scrapy.Spider):
+class QuoteSpider(scrapy.Spider):
+    """Quotes Spider with xpath"""
     name = "quotes"
 
     allowed_domains = [
@@ -22,7 +23,7 @@ class QuoteCrawler(scrapy.Spider):
         "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
         "FEED_EXPORT_ENCODING": "utf-8",
         "FEEDS": {
-            "quotes_scrapy.json": {
+            "quotes.json": {
                 "format": "json",
                 "encoding": "utf-8",
                 "indent": 4
@@ -41,12 +42,13 @@ class QuoteCrawler(scrapy.Spider):
                 "tags": tags
             }
 
-        next_page = self.start_urls[0] + response.xpath("//li[@class='next']/a/@href").get().strip()
-        print(next_page)
-        yield from response.follow_all(next_page, self.parse)
+        next_page = response.xpath("//li[@class='next']/a/@href").get()
+        if next_page:
+            yield scrapy.Request(url=self.start_urls[0] + next_page)
 
 
 class AuthorSpider(scrapy.Spider):
+    """Author Spider with css"""
     name = "authors"
     allowed_domains = [
         "quotes.toscrape.com"
@@ -62,7 +64,7 @@ class AuthorSpider(scrapy.Spider):
         "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
         "FEED_EXPORT_ENCODING": "utf-8",
         "FEEDS": {
-            "authors_scrapy.json": {
+            "authors.json": {
                 "format": "json",
                 "encoding": "utf-8",
                 "indent": 4
@@ -91,10 +93,7 @@ class AuthorSpider(scrapy.Spider):
 
 
 if __name__ == "__main__":
-    # author_process = CrawlerProcess()
-    # author_process.crawl(AuthorSpider)
-    # author_process.start()
-
-    quote_process = CrawlerProcess()
-    quote_process.crawl(QuoteCrawler)
-    quote_process.start()
+    process = CrawlerProcess()
+    # process.crawl(AuthorSpider)
+    process.crawl(QuoteSpider)
+    process.start()
