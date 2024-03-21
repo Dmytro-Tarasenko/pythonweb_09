@@ -32,10 +32,10 @@ class QuoteSpider(scrapy.Spider):
     }
 
     def parse(self, response: Response, **kwargs) -> Any:
-        for quote_div in response.xpath("//div[@class='quote']"):
-            author = quote_div.xpath("//small[@class='author']/text()").get().strip()
-            quote = quote_div.xpath("//span[@class='text']/text()").get().strip()
-            tags = quote_div.xpath("//meta[@class='keywords']/@content").get().split(",")
+        for quote_div in response.xpath("/html//div[@class='quote']"):
+            author = quote_div.xpath("span/small[@class='author']/text()").get().strip()
+            quote = quote_div.xpath("span[@class='text']/text()").get().strip()
+            tags = quote_div.xpath("div/meta[@class='keywords']/@content").get().split(",")
             yield {
                 "author": author,
                 "quote": quote,
@@ -94,6 +94,6 @@ class AuthorSpider(scrapy.Spider):
 
 if __name__ == "__main__":
     process = CrawlerProcess()
-    # process.crawl(AuthorSpider)
+    process.crawl(AuthorSpider)
     process.crawl(QuoteSpider)
     process.start()
